@@ -1,0 +1,18 @@
+using UnityEngine;
+using UnityEditor;
+
+using System.Collections;
+
+[CustomEditor(typeof(%0%))]
+public class %0%Editor : Editor
+{
+    void OnEnable()
+    {
+
+    }
+
+    public override void OnInspectorGUI()
+    {
+        base.OnInspectorGUI();
+    }
+}
