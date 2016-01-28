@@ -2,6 +2,7 @@
 using UnityEditor;
 
 using System.Collections;
+using System.Collections.Generic;
 
 [CustomEditor(typeof(GUISkin))]
 public class GUISkinEditor : MultiWindowEditor
@@ -16,6 +17,7 @@ public class GUISkinEditor : MultiWindowEditor
         UseBackground = 0x10,
         IsCustom  = 0x20,
         UseON     = 0x40,
+        ALL       = 0xffff,
         Interactable = Normal | Hover | Active | Focused,
     }
     enum SelectionMode
@@ -49,6 +51,8 @@ public class GUISkinEditor : MultiWindowEditor
 
     private GUIStyle _clipboardStyle;
     private GUIStyle _clipboardSelectedStyle;
+
+    private GUIStyle _currentCustomStyle;
 
     private string[] _defaultStylesOptionNames;
     private int      _selectedDefaultOptionIndex = 0;
@@ -101,7 +105,19 @@ public class GUISkinEditor : MultiWindowEditor
         EditorGUILayout.BeginVertical();
         GUILayout.Space(5);
         EditorGUILayout.BeginVertical("HelpBox");
-        GUILayout.Button("ping");
+        EditorGUILayout.BeginHorizontal("HelpBox");
+        GUILayout.FlexibleSpace();
+        GUILayout.Label("GUISkin - " + _guiSkin.name,EditorStyles.boldLabel);
+        GUILayout.FlexibleSpace();
+        EditorGUILayout.EndHorizontal();
+
+        EditorGUILayout.BeginHorizontal();
+        GUILayout.FlexibleSpace();
+        if (GUILayout.Button("Ping", GUILayout.Width(40)))
+        {
+            EditorGUIUtility.PingObject(_guiSkin);
+        }
+        EditorGUILayout.EndHorizontal();
         EditorGUILayout.EndVertical();
         EditorGUILayout.EndVertical();
     }
@@ -112,15 +128,15 @@ public class GUISkinEditor : MultiWindowEditor
         _mainScroll = GUILayout.BeginScrollView(_mainScroll, "HelpBox");
 
         GUILayout.BeginHorizontal("HelpBox");
-        if(GUILayout.Button("Default Styles",GUILayout.Height(30)))
+        if(GUILayout.Toggle(_selectionMode == SelectionMode.Default, "Default Styles", "Button", GUILayout.Height(30)))
         {
             _selectionMode = SelectionMode.Default;
         }
-        if (GUILayout.Button("Custom Styles", GUILayout.Height(30)))
+        if (GUILayout.Toggle(_selectionMode== SelectionMode.Custom, "Custom Styles", "Button", GUILayout.Height(30)))
         {
             _selectionMode = SelectionMode.Custom;
         }
-        if (GUILayout.Button("Options", GUILayout.Height(30)))
+        if (GUILayout.Toggle(_selectionMode == SelectionMode.Options,"Options","Button", GUILayout.Height(30)))
         {
             _selectionMode = SelectionMode.Options;
         }
@@ -143,11 +159,11 @@ public class GUISkinEditor : MultiWindowEditor
                 _clipboardStyle = new GUIStyle(_selectedStyle.style);
             }
 
-            if (GUILayout.Button("Paste <>"))
+            if (GUILayout.Button("Paste"))
             {
                 if (_clipboardStyle != null)
                 {
-
+                    _selectedStyle.style = _clipboardStyle;
                 }
             }
 
@@ -164,6 +180,92 @@ public class GUISkinEditor : MultiWindowEditor
             }
 
             GUILayout.EndVertical();
+        }
+        else if(_selectionMode == SelectionMode.Custom)
+        {
+            List<GUIStyle> deleteList = new List<GUIStyle>();
+
+
+            for(int a=0;a<_guiSkin.customStyles.Length;++a)
+            {
+                GUIStyle style = _guiSkin.customStyles[a];
+                if(style != null)
+                {
+                    GUILayout.BeginHorizontal("HelpBox");
+                    if(GUILayout.Button("Select"))
+                    {
+                        if(_currentCustomStyle==null)
+                        {
+                            _currentCustomStyle = _guiSkin.customStyles[a];
+                        }
+                        else
+                        {
+                            _currentCustomStyle = null;
+                        }
+                    }
+                    GUILayout.FlexibleSpace();
+                    if (string.IsNullOrEmpty(style.name))
+                    {
+                        GUILayout.Label("Unnamed Style");
+                    }
+                    else
+                    {
+                        GUILayout.Label(style.name);
+                    }
+                    GUILayout.FlexibleSpace();
+
+                    if (GUILayout.Button("Copy"))
+                    {
+                        _clipboardSelectedStyle = style;
+                        _clipboardStyle = new GUIStyle(style);
+                    }
+                    if (GUILayout.Button("Paste"))
+                    {
+                        _guiSkin.customStyles[a] = _clipboardStyle;
+                    }
+                    if (GUILayout.Button("Delete"))
+                    {
+                        deleteList.Add(style);
+                    }
+                    GUILayout.EndHorizontal();
+                    if(_currentCustomStyle==style)
+                    {
+                        GUILayout.BeginVertical("HelpBox");
+                        DrawGUIStyle(new Style("",_currentCustomStyle,ControlFlags.ALL));
+                        GUILayout.EndVertical();
+                    }
+                }
+            }
+
+            if(deleteList.Count>0)
+            {
+                Undo.RecordObject(_guiSkin, "Custom GuiStyle Removed");
+                List<GUIStyle> customStyles = new List<GUIStyle>(_guiSkin.customStyles);
+                foreach (var style in deleteList)
+                {
+                    if(style == _currentCustomStyle)
+                    {
+                        _currentCustomStyle = null;
+                    }
+                    customStyles.Remove(style);
+
+                }
+                _guiSkin.customStyles = customStyles.ToArray();
+                EditorUtility.SetDirty(_guiSkin);
+            }
+ 
+            GUILayout.BeginHorizontal("HelpBox");
+            if (GUILayout.Button("Add New"))
+            {
+                Undo.RecordObject(_guiSkin, "Custom GuiStyle Added");
+                List<GUIStyle> styles = new List<GUIStyle>(_guiSkin.customStyles);
+                styles.Add(new GUIStyle());
+                _guiSkin.customStyles = styles.ToArray();
+                EditorUtility.SetDirty(_guiSkin);
+
+            }
+            GUILayout.EndHorizontal();
+
         }
         GUILayout.EndScrollView();
         GUILayout.EndArea();
@@ -192,6 +294,24 @@ public class GUISkinEditor : MultiWindowEditor
             GUI.skin = defaultSkin;
 
             GUILayout.EndVertical();
+        }else
+        {
+            if (_currentCustomStyle != null)
+            {
+                GUILayout.BeginVertical("HelpBox");
+
+                DrawPreviewControls(_currentCustomStyle);
+
+                GUILayout.EndVertical();
+            }
+            else
+            {
+                GUILayout.BeginHorizontal("HelpBox");
+                GUILayout.FlexibleSpace();
+                GUILayout.Label("Select a custom style to preview");
+                GUILayout.FlexibleSpace();
+                GUILayout.EndHorizontal();
+            }
         }
         GUILayout.EndVertical();
         GUILayout.EndScrollView();
@@ -211,9 +331,11 @@ public class GUISkinEditor : MultiWindowEditor
     {
         GUIStyle style = inStyle.style;
 
+        GUILayout.BeginHorizontal("HelpBox");
         style.name = TextField(style.name,"Name");
+        GUILayout.EndHorizontal();
 
-        GUILayout.BeginVertical("HelpBox");
+        GUILayout.BeginVertical();
         GUILayout.Label("States", EditorStyles.boldLabel);
         GUILayout.Label("Background");
         GUILayout.BeginVertical("HelpBox");
@@ -281,13 +403,64 @@ public class GUISkinEditor : MultiWindowEditor
         }
         GUILayout.EndVertical();
 
-        GUILayout.Label("Margin");
+        GUILayout.Label("Offsets",EditorStyles.boldLabel);
         GUILayout.BeginVertical("HelpBox");
-       // style.mar
+
+        style.border    = RectField(style.border, "Border");
+        style.margin    = RectField(style.margin, "Margin");
+        style.padding   = RectField(style.padding, "Padding");
+        style.overflow  = RectField(style.overflow, "Overflow");
         GUILayout.EndVertical();
 
         GUILayout.EndVertical();
 
+    }
+    void DrawPreviewControls(GUIStyle style)
+    {
+        GUILayout.BeginVertical();
+        EditorGUILayout.LabelField("Boxes");
+        GUILayout.BeginHorizontal();
+        GUILayout.Box("Box", style, GUILayout.Height(50));
+        GUILayout.Box("Box", style, GUILayout.Height(40));
+        GUILayout.Box("Box", style, GUILayout.Height(20));
+        GUILayout.EndHorizontal();
+
+        EditorGUILayout.LabelField("Buttons");
+        GUILayout.BeginHorizontal();
+        GUILayout.Button("Button", style, GUILayout.Height(50));
+        GUILayout.Button("Button", style, GUILayout.Height(40));
+        GUILayout.Button("Button", style, GUILayout.Height(20));
+        GUILayout.EndHorizontal();
+
+        EditorGUILayout.LabelField("Toggles");
+        GUILayout.BeginHorizontal();
+        GUILayout.Toggle(true, "Toggle", style);
+        GUILayout.Toggle(false, "Toggle", style);
+        GUILayout.Toggle(true, "Toggle", style);
+        GUILayout.EndHorizontal();
+
+        EditorGUILayout.LabelField("Labels");
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Label", style);
+        GUILayout.Label("Label Medium", style);
+        GUILayout.Label("Label Big", style);
+        GUILayout.EndHorizontal();
+
+        EditorGUILayout.LabelField("Text Fields");
+        GUILayout.BeginHorizontal();
+        GUILayout.TextField("TextField", style, GUILayout.Height(50));
+        GUILayout.TextField("TextField Medium\n2 lines", style, GUILayout.Height(40));
+        GUILayout.TextField("TextField Small", style, GUILayout.Height(20));
+        GUILayout.EndHorizontal();
+
+        EditorGUILayout.LabelField("Text Areas");
+        GUILayout.BeginHorizontal();
+        GUILayout.TextArea("TextArea", style, GUILayout.Height(50));
+        GUILayout.TextArea("TextArea Medium\n2 Lines", style, GUILayout.Height(40));
+        GUILayout.TextArea("TextArea Small", style, GUILayout.Height(20));
+        GUILayout.EndHorizontal();
+
+        GUILayout.EndVertical();
     }
 
     void DrawPreviewControls()
@@ -414,6 +587,29 @@ public class GUISkinEditor : MultiWindowEditor
         }
 
         return color;
+    }
+
+    RectOffset RectField(RectOffset rect, string title)
+    {
+        RectOffset newRect = new RectOffset(rect.left,rect.right,rect.top,rect.bottom);
+
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(title, GUILayout.Width(100));
+
+        newRect.left = EditorGUILayout.IntField(rect.left);
+        newRect.top = EditorGUILayout.IntField(rect.top);
+        newRect.right = EditorGUILayout.IntField(rect.right);
+        newRect.bottom = EditorGUILayout.IntField(rect.bottom);
+
+        GUILayout.EndHorizontal();
+        if (GUI.changed)
+        {
+            Undo.RecordObject(_guiSkin, "GUISkin " + title + " Changed");
+            EditorUtility.SetDirty(_guiSkin);
+            return newRect;
+        }
+
+        return rect;
     }
 
     string TextField(string text,string title)
