@@ -10,14 +10,15 @@ public class GUISkinEditor : MultiWindowEditor
     [System.Flags]
     enum ControlFlags
     {
-        Normal    = 0x1,
-        Hover     = 0x2,
-        Active    = 0x4,
-        Focused   = 0x8,
-        UseBackground = 0x10,
-        IsCustom  = 0x20,
-        UseON     = 0x40,
-        ALL       = 0xffff,
+        Normal      = 0x1,
+        Hover       = 0x2,
+        Active      = 0x4,
+        Focused     = 0x8,
+        Background  = 0x10,
+        Text        = 0x20,
+        Custom      = 0x40,
+        UseON       = 0x80,
+        ALL         = 0xffff,
         Interactable = Normal | Hover | Active | Focused,
     }
     enum SelectionMode
@@ -72,12 +73,12 @@ public class GUISkinEditor : MultiWindowEditor
          _defaultStylesOptionNames   = new string[20];
         _styles                      = new Style[20]; 
 
-        _styles[0]  = new Style("Box"                               , _guiSkin.box                              , ControlFlags.Normal);
-        _styles[1]  = new Style("Button"                            , _guiSkin.button                           , ControlFlags.Interactable | ControlFlags.UseBackground);
-        _styles[2]  = new Style("Toggle"                            , _guiSkin.toggle                           , ControlFlags.Interactable | ControlFlags.UseBackground | ControlFlags.UseON);
-        _styles[3]  = new Style("Label"                             , _guiSkin.label                            , ControlFlags.Interactable | ControlFlags.UseBackground);
-        _styles[4]  = new Style("TextField"                         , _guiSkin.textField                        , ControlFlags.Interactable);
-        _styles[5]  = new Style("TextArea"                          , _guiSkin.textArea                         , ControlFlags.Normal);
+        _styles[0]  = new Style("Box"                               , _guiSkin.box                              , ControlFlags.Normal| ControlFlags.Text);
+        _styles[1]  = new Style("Button"                            , _guiSkin.button                           , ControlFlags.Interactable | ControlFlags.Background | ControlFlags.Text);
+        _styles[2]  = new Style("Toggle"                            , _guiSkin.toggle                           , ControlFlags.Interactable | ControlFlags.Background | ControlFlags.UseON | ControlFlags.Text);
+        _styles[3]  = new Style("Label"                             , _guiSkin.label                            , ControlFlags.Interactable | ControlFlags.Background | ControlFlags.Text);
+        _styles[4]  = new Style("TextField"                         , _guiSkin.textField                        , ControlFlags.Interactable | ControlFlags.Text);
+        _styles[5]  = new Style("TextArea"                          , _guiSkin.textArea                         , ControlFlags.Interactable | ControlFlags.Text);
         _styles[6]  = new Style("Window"                            , _guiSkin.window                           , ControlFlags.Normal);
         _styles[7]  = new Style("Horizontal Slider"                 , _guiSkin.horizontalSlider                 , ControlFlags.Normal);
         _styles[8]  = new Style("Horizontal Slider Thumb"           , _guiSkin.horizontalSliderThumb            , ControlFlags.Normal);
@@ -412,6 +413,16 @@ public class GUISkinEditor : MultiWindowEditor
         style.overflow  = RectField(style.overflow, "Overflow");
         GUILayout.EndVertical();
 
+        GUILayout.Label("Text", EditorStyles.boldLabel);
+        GUILayout.BeginVertical("HelpBox");
+
+        style.fontSize  = IntField(style.fontSize, "Font Size");
+        style.fontStyle = (FontStyle)EnumField(style.fontStyle, "Font Style");
+        style.alignment = (TextAnchor)EnumField(style.alignment, "Alignment");
+        style.clipping  = (TextClipping)EnumField(style.clipping, "Clipping");
+
+        GUILayout.EndVertical();
+
         GUILayout.EndVertical();
 
     }
@@ -555,7 +566,7 @@ public class GUISkinEditor : MultiWindowEditor
         GUILayout.EndVertical();
 
     }
-
+    #region Fields
     T ObjectField<T>(T obj, string title) where T : Object
     {
         GUILayout.BeginHorizontal();
@@ -627,4 +638,40 @@ public class GUISkinEditor : MultiWindowEditor
 
         return text;
     }
+
+    System.Enum EnumField(System.Enum enumType,string title)
+    {
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(title, GUILayout.Width(100));
+
+        System.Enum newNumber = EditorGUILayout.EnumPopup(enumType);
+
+        GUILayout.EndHorizontal();
+        if (GUI.changed)
+        {
+            Undo.RecordObject(_guiSkin, "GUISkin " + title + " Changed");
+            EditorUtility.SetDirty(_guiSkin);
+            return newNumber;
+        }
+
+        return enumType;
+    }
+
+    int IntField(int number, string title)
+    {
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(title, GUILayout.Width(100));
+        int newNumber = EditorGUILayout.IntField(number);
+       
+        GUILayout.EndHorizontal();
+        if (GUI.changed)
+        {
+            Undo.RecordObject(_guiSkin, "GUISkin " + title + " Changed");
+            EditorUtility.SetDirty(_guiSkin);
+            return newNumber;
+        }
+
+        return number;
+    }
+    #endregion
 }
