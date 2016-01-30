@@ -18,6 +18,7 @@ public class GUISkinEditor : MultiWindowEditor
         Text        = 0x20,
         Custom      = 0x40,
         UseON       = 0x80,
+        Misc        = 0x100,
         ALL         = 0xffff,
         Interactable = Normal | Hover | Active | Focused,
     }
@@ -41,6 +42,8 @@ public class GUISkinEditor : MultiWindowEditor
         }
     }
 
+    private static int sLabelWitdh = 130;
+
     private Vector2 _mainScroll = new Vector2(0, 0);
     private Vector2 _auxScroll = new Vector2(0, 0);
     
@@ -58,6 +61,11 @@ public class GUISkinEditor : MultiWindowEditor
     private string[] _defaultStylesOptionNames;
     private int      _selectedDefaultOptionIndex = 0;
 
+
+    // Colors
+    private Color _guiStyleAreaColor;
+
+
     private SelectionMode _selectionMode = SelectionMode.Default;
 
     public void OnEnable()
@@ -65,7 +73,9 @@ public class GUISkinEditor : MultiWindowEditor
         SetupMultiWindow(0.6f);
 
         _guiSkin = target as GUISkin;
-        CreateData(); 
+        CreateData();
+
+        _guiStyleAreaColor = new Color(1.0f, 0.95f, 0.875f);
     }
 
     void CreateData()
@@ -176,7 +186,9 @@ public class GUISkinEditor : MultiWindowEditor
             {
                 if (_selectedStyle != null)
                 {
+                    GUI.color = _guiStyleAreaColor;
                     DrawGUIStyle(_selectedStyle);
+                    GUI.color = Color.white;
                 }
             }
 
@@ -232,13 +244,16 @@ public class GUISkinEditor : MultiWindowEditor
                     if(_currentCustomStyle==style)
                     {
                         GUILayout.BeginVertical("HelpBox");
+                        GUI.color = _guiStyleAreaColor;
                         DrawGUIStyle(new Style("",_currentCustomStyle,ControlFlags.ALL));
+
+                        GUI.color = Color.white;
                         GUILayout.EndVertical();
                     }
                 }
             }
-
-            if(deleteList.Count>0)
+     
+            if (deleteList.Count>0)
             {
                 Undo.RecordObject(_guiSkin, "Custom GuiStyle Removed");
                 List<GUIStyle> customStyles = new List<GUIStyle>(_guiSkin.customStyles);
@@ -267,6 +282,16 @@ public class GUISkinEditor : MultiWindowEditor
             }
             GUILayout.EndHorizontal();
 
+        }
+        else if (_selectionMode == SelectionMode.Options)
+        {
+            GUILayout.BeginVertical("HelpBox");
+            _guiSkin.settings.doubleClickSelectsWord = BoolField(_guiSkin.settings.doubleClickSelectsWord, "2 Click Select Word");
+            _guiSkin.settings.tripleClickSelectsLine = BoolField(_guiSkin.settings.tripleClickSelectsLine, "3 Click Select Line");
+            _guiSkin.settings.cursorColor = ColorField(_guiSkin.settings.cursorColor, "Cursor Color");
+            _guiSkin.settings.cursorFlashSpeed = FloatField(_guiSkin.settings.cursorFlashSpeed, "Cursor Flash Speed");
+            _guiSkin.settings.selectionColor = ColorField(_guiSkin.settings.selectionColor, "Selection Color");
+            GUILayout.EndVertical();
         }
         GUILayout.EndScrollView();
         GUILayout.EndArea();
@@ -299,11 +324,13 @@ public class GUISkinEditor : MultiWindowEditor
         {
             if (_currentCustomStyle != null)
             {
+      
                 GUILayout.BeginVertical("HelpBox");
 
                 DrawPreviewControls(_currentCustomStyle);
 
                 GUILayout.EndVertical();
+           
             }
             else
             {
@@ -416,13 +443,25 @@ public class GUISkinEditor : MultiWindowEditor
         GUILayout.Label("Text", EditorStyles.boldLabel);
         GUILayout.BeginVertical("HelpBox");
 
+        style.font      = ObjectField<Font>(style.font, "Font");
         style.fontSize  = IntField(style.fontSize, "Font Size");
         style.fontStyle = (FontStyle)EnumField(style.fontStyle, "Font Style");
         style.alignment = (TextAnchor)EnumField(style.alignment, "Alignment");
         style.clipping  = (TextClipping)EnumField(style.clipping, "Clipping");
 
-        GUILayout.EndVertical();
+        style.wordWrap = BoolField(style.wordWrap, "Word Wrap");
+        style.richText = BoolField(style.richText, "Rich Text");
 
+        GUILayout.EndVertical();
+        GUILayout.Label("Misc", EditorStyles.boldLabel);
+        GUILayout.BeginVertical("HelpBox");
+        style.imagePosition = (ImagePosition)EnumField(style.imagePosition, "Image Position");
+        style.contentOffset = Vector2Field(style.contentOffset, "Content Offset");
+        style.fixedWidth = FloatField(style.fixedWidth, "Fixed Width");
+        style.fixedHeight = FloatField(style.fixedHeight, "Fixed Height");
+        style.stretchWidth = BoolField(style.stretchWidth, "Stretch Width");
+        style.stretchHeight = BoolField(style.stretchHeight, "Stretch Height");
+        GUILayout.EndVertical();
         GUILayout.EndVertical();
 
     }
@@ -566,11 +605,12 @@ public class GUISkinEditor : MultiWindowEditor
         GUILayout.EndVertical();
 
     }
-    #region Fields
+
+    #region Editor Fields
     T ObjectField<T>(T obj, string title) where T : Object
     {
         GUILayout.BeginHorizontal();
-        GUILayout.Label(title, GUILayout.Width(100));
+        GUILayout.Label(title, GUILayout.Width(GUISkinEditor.sLabelWitdh));
         T newObject = EditorGUILayout.ObjectField(obj, typeof(T),false) as T;
         GUILayout.EndHorizontal();
         if (GUI.changed)
@@ -586,7 +626,7 @@ public class GUISkinEditor : MultiWindowEditor
     Color ColorField(Color color, string title)
     {
         GUILayout.BeginHorizontal();
-        GUILayout.Label(title, GUILayout.Width(100));
+        GUILayout.Label(title, GUILayout.Width(GUISkinEditor.sLabelWitdh));
 
         Color newColor = EditorGUILayout.ColorField(color);
         GUILayout.EndHorizontal();
@@ -605,7 +645,7 @@ public class GUISkinEditor : MultiWindowEditor
         RectOffset newRect = new RectOffset(rect.left,rect.right,rect.top,rect.bottom);
 
         GUILayout.BeginHorizontal();
-        GUILayout.Label(title, GUILayout.Width(100));
+        GUILayout.Label(title, GUILayout.Width(GUISkinEditor.sLabelWitdh));
 
         newRect.left = EditorGUILayout.IntField(rect.left);
         newRect.top = EditorGUILayout.IntField(rect.top);
@@ -626,7 +666,7 @@ public class GUISkinEditor : MultiWindowEditor
     string TextField(string text,string title)
     {
         GUILayout.BeginHorizontal();
-        GUILayout.Label(title,GUILayout.Width(100));
+        GUILayout.Label(title,GUILayout.Width(GUISkinEditor.sLabelWitdh));
         string newText = GUILayout.TextField(text);
         GUILayout.EndHorizontal();
         if (GUI.changed)
@@ -642,7 +682,7 @@ public class GUISkinEditor : MultiWindowEditor
     System.Enum EnumField(System.Enum enumType,string title)
     {
         GUILayout.BeginHorizontal();
-        GUILayout.Label(title, GUILayout.Width(100));
+        GUILayout.Label(title, GUILayout.Width(GUISkinEditor.sLabelWitdh));
 
         System.Enum newNumber = EditorGUILayout.EnumPopup(enumType);
 
@@ -660,7 +700,7 @@ public class GUISkinEditor : MultiWindowEditor
     int IntField(int number, string title)
     {
         GUILayout.BeginHorizontal();
-        GUILayout.Label(title, GUILayout.Width(100));
+        GUILayout.Label(title, GUILayout.Width(GUISkinEditor.sLabelWitdh));
         int newNumber = EditorGUILayout.IntField(number);
        
         GUILayout.EndHorizontal();
@@ -672,6 +712,57 @@ public class GUISkinEditor : MultiWindowEditor
         }
 
         return number;
+    }
+
+    float FloatField(float number, string title)
+    {
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(title, GUILayout.Width(GUISkinEditor.sLabelWitdh));
+        float newNumber = EditorGUILayout.FloatField(number);
+
+        GUILayout.EndHorizontal();
+        if (GUI.changed)
+        {
+            Undo.RecordObject(_guiSkin, "GUISkin " + title + " Changed");
+            EditorUtility.SetDirty(_guiSkin);
+            return newNumber;
+        }
+
+        return number;
+    }
+
+    bool BoolField(bool value, string title)
+    {
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(title, GUILayout.Width(GUISkinEditor.sLabelWitdh));
+        bool newValue = EditorGUILayout.Toggle(value);
+
+        GUILayout.EndHorizontal();
+        if (GUI.changed)
+        {
+            Undo.RecordObject(_guiSkin, "GUISkin " + title + " Changed");
+            EditorUtility.SetDirty(_guiSkin);
+            return newValue;
+        }
+
+        return value;
+    }
+
+    Vector2 Vector2Field(Vector2 value, string title)
+    {
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(title, GUILayout.Width(GUISkinEditor.sLabelWitdh));
+        Vector2 newValue = EditorGUILayout.Vector2Field("",value);
+
+        GUILayout.EndHorizontal();
+        if (GUI.changed)
+        {
+            Undo.RecordObject(_guiSkin, "GUISkin " + title + " Changed");
+            EditorUtility.SetDirty(_guiSkin);
+            return newValue;
+        }
+
+        return value;
     }
     #endregion
 }
