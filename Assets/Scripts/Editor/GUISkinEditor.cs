@@ -304,7 +304,7 @@ public class GUISkinEditor : MultiWindowEditor
         GUILayout.BeginVertical("HelpBox");
         GUILayout.BeginHorizontal("HelpBox");
         GUILayout.FlexibleSpace();
-        GUILayout.Label("PreviewWindow");
+        GUILayout.Label("Preview");
         GUILayout.FlexibleSpace();
         GUILayout.EndHorizontal();
 
